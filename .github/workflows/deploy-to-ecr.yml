@@ -1,0 +1,62 @@
+name: Build and Push Docker images to ECR
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_BACKEND_REPO: my-backend-repo
+  ECR_FRONTEND_REPO: my-frontend-repo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get version tag (use Git tag or commit SHA)
+        id: vars
+        run: |
+          if git describe --tags --exact-match > /dev/null 2>&1; then
+            echo "VERSION=$(git describe --tags)" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create ECR backend repository if not exists
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_BACKEND_REPO }} || \
+          aws ecr create-repository --repository-name ${{ env.ECR_BACKEND_REPO }}
+
+      - name: Create ECR frontend repository if not exists
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_FRONTEND_REPO }} || \
+          aws ecr create-repository --repository-name ${{ env.ECR_FRONTEND_REPO }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Build and push backend image
+        run: |
+          IMAGE_URI=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_BACKEND_REPO }}:${{ steps.vars.outputs.VERSION }}
+          docker build -t $IMAGE_URI ./backend
+          docker push $IMAGE_URI
+
+      - name: Build and push frontend image
+        run: |
+          IMAGE_URI=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_FRONTEND_REPO }}:${{ steps.vars.outputs.VERSION }}
+          docker build -t $IMAGE_URI ./frontend
+          docker push $IMAGE_URI

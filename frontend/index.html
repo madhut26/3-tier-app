@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Task Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 0.5rem 0; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; }
+    button { background: #e74c3c; color: white; border: none; padding: 0.3rem 0.6rem; cursor: pointer; }
+    button:hover { background: #c0392b; }
+  </style>
+</head>
+<body>
+  <h1>Task Manager</h1>
+  
+  <form id="taskForm">
+    <input type="text" id="taskInput" placeholder="New task" required />
+    <button type="submit">Add Task</button>
+  </form>
+
+  <ul id="taskList"></ul>
+
+  <script>
+    const API_URL = '/api/tasks';
+
+    async function loadTasks() {
+      const res = await fetch(API_URL);
+      const tasks = await res.json();
+
+      const list = document.getElementById('taskList');
+      list.innerHTML = '';
+
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.textContent = task.name;
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = async () => {
+          await fetch(`${API_URL}/${task._id}`, { method: 'DELETE' });
+          loadTasks();
+        };
+
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById('taskForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('taskInput');
+      const name = input.value.trim();
+      if (!name) return;
+
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+
+      input.value = '';
+      loadTasks();
+    };
+
+    loadTasks();
+  </script>
+</body>
+</html>
