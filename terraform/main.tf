@@ -98,10 +98,11 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "frontend_tg" {
-  name     = "${var.project_name}-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "${var.project_name}-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip" # ✅ ADD THIS LINE
 
   health_check {
     path                = "/"
@@ -112,6 +113,7 @@ resource "aws_lb_target_group" "frontend_tg" {
     matcher             = "200"
   }
 }
+
 
 resource "aws_lb_listener" "alb_listener" {
   load_balancer_arn = aws_lb.alb.arn
