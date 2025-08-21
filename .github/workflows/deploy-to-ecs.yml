@@ -13,7 +13,7 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
-      DOCKER_TAG: ${{ github.sha }}
+      DOCKER_TAG: 76b780a 
 
     steps:
       - name: Checkout code
